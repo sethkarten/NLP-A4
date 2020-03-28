@@ -48,10 +48,10 @@ class CRFLoss(nn.Module):
 
     def compute_normalizers(self, scores):
         B, T, L = scores.size()
-        prev = None  # TODO (B x L)
-        for i in range(1, T):
-            prev = None  # TODO: implement only using prev (no new definition)
-        normalizers = None  # TODO (B)
+        prev = (self.start + scores[:,0,:]).expand(B,L)
+        for i in range(1,T):
+            prev = (prev.unsqueeze(2) + self.T.transpose(1,0) + scores[:,i,:].unsqueeze(1)).unsqueeze(1).reshape((B,L,L)).logsumexp(dim=1)
+        normalizers = torch.logsumexp(prev+self.end.expand(B,L), dim=1)
         return normalizers
 
     def compute_normalizers_brute(self, scores):
