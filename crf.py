@@ -21,16 +21,17 @@ class CRFLoss(nn.Module):
 
     def decode(self, scores):  # B x T x L
         B, T, L = scores.size()
-        prev = None  # TODO (B x L)
+        prev = (self.start + scores[:,0,:]).expand(B,L)  # TODO (B x L)
         back = []
         for i in range(1, T):
-            prev, indices = None  # TODO (indices: B x L)
+            prev, indices = (prev.unsqueeze(2) + self.T.transpose(1,0) + scores[:,i,:].unsqueeze(1)).unsqueeze(1).reshape((B,L,L)).max(dim=1) # TODO (indices: B x L)
             back.append(indices)
-
-        max_scores, indices = None  # TODO (indices: B)
+        prev += self.end.expand(B,L)
+        max_scores, indices = prev.max(dim=1)  # TODO (indices: B)
         tape = [indices]
-        for i in range(T - 1):
-            indices = None  # TODO
+        for i in reversed(range(T - 1)):
+            indices = back[i].gather(1, torch.cat((indices.view(B,1),torch.zeros(B, dtype=torch.long).view(B,1)), dim=1)).t()[0] # no for loops
+            # indices = torch.tensor([back[i][j,indices[j]] for j in range(B)])# TODO
             tape.append(indices)
         return max_scores, torch.stack(tape[::-1], dim=1)
 
@@ -43,7 +44,6 @@ class CRFLoss(nn.Module):
             all_targets.append(torch.LongTensor(yseq))
             yseq_scores.append(self.score_targets(scores, targets))
         max_scores, indices = torch.stack(yseq_scores).max(dim=0)
-
         return max_scores, torch.stack(all_targets)[indices]
 
     def compute_normalizers(self, scores):
