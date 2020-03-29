@@ -35,7 +35,6 @@ def forward_backward(sequence):
     beta = []
     prev = dict()
     for i, X in reversed(list(enumerate(sequence[1:]+('EOS',)))):
-        print(i,X)
         cur = dict()
         for tag in tags:
             if i == len(sequence)-1:
